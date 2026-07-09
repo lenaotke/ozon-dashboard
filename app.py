@@ -4,7 +4,16 @@ import pandas as pd
 st.set_page_config(page_title="Умный Дашборд Ozon", layout="wide")
 st.title("📊 Финансовый Дашборд Ozon")
 
-uploaded_files = st.file_uploader("Загрузите файлы (.xlsx или .xls)", accept_multiple_files=True)
+uploaded_files = st.file_uploader("Перетащите сюда отчеты", accept_multiple_files=True)
+
+# Функция поиска строки с заголовками
+def get_df(file):
+    # Сначала ищем строку, где есть слово "Артикул"
+    df_temp = pd.read_excel(file, header=None, nrows=20)
+    for i in range(len(df_temp)):
+        if "артикул" in str(df_temp.iloc[i].values).lower():
+            return pd.read_excel(file, header=i)
+    return pd.read_excel(file) # если не нашли, пробуем обычный метод
 
 if uploaded_files:
     dfs = []
@@ -12,25 +21,27 @@ if uploaded_files:
     
     for f in uploaded_files:
         try:
-            # Пытаемся прочитать файл. 
-            # engine=None позволяет Pandas самому выбрать лучший движок (openpyxl или xlrd)
-            df = pd.read_excel(f, engine=None) 
+            df = get_df(f)
             df.columns = [str(c).strip() for c in df.columns]
             
-            # Проверяем, прайс это или отчет
+            # Проверяем колонки
             if 'Цена продажи опт' in df.columns or 'Себестоимость' in df.columns:
                 price_df = df
-                st.write(f"✅ Прайс-лист загружен: {f.name}")
             else:
                 dfs.append(df)
-                st.write(f"✅ Отчет загружен: {f.name}")
+            st.write(f"✅ Прочитан файл: {f.name} (Строк: {len(df)})")
         except Exception as e:
-            st.error(f"❌ Не удалось прочитать файл {f.name}. Попробуйте открыть его в Excel, нажать 'Сохранить как' и выбрать формат 'Книга Excel (.xlsx)'. Ошибка: {e}")
+            st.error(f"Ошибка в {f.name}: {e}")
 
     if dfs and price_df is not None:
         try:
             df_ozon = pd.concat(dfs, ignore_index=True)
-            st.success("Данные успешно склеены и готовы к анализу!")
-            st.write(df_ozon.head())
+            # Приводим артикулы к строкам для точного сопоставления
+            df_ozon['Артикул'] = df_ozon['Артикул'].astype(str).str.strip()
+            price_df['Артикул'] = price_df['Артикул'].astype(str).str.strip()
+            
+            merged = pd.merge(df_ozon, price_df, on='Артикул', how='inner')
+            st.success("✅ Данные сопоставлены! Вот результат:")
+            st.dataframe(merged)
         except Exception as e:
-            st.error(f"Ошибка при объединении таблиц: {e}")
+            st.error(f"Не удалось соединить таблицы: {e}")
