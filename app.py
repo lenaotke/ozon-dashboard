@@ -12,24 +12,25 @@ if uploaded_files:
     
     for f in uploaded_files:
         try:
-            # Пытаемся прочитать файл через pandas, он сам подберет движок
-            # Добавляем try-except для каждого файла отдельно
-            df = pd.read_excel(f)
+            # Пытаемся прочитать файл. 
+            # engine=None позволяет Pandas самому выбрать лучший движок (openpyxl или xlrd)
+            df = pd.read_excel(f, engine=None) 
             df.columns = [str(c).strip() for c in df.columns]
             
-            # Ищем прайс-лист
+            # Проверяем, прайс это или отчет
             if 'Цена продажи опт' in df.columns or 'Себестоимость' in df.columns:
                 price_df = df
+                st.write(f"✅ Прайс-лист загружен: {f.name}")
             else:
                 dfs.append(df)
-            st.write(f"✅ Файл {f.name} успешно прочитан.")
+                st.write(f"✅ Отчет загружен: {f.name}")
         except Exception as e:
-            st.error(f"❌ Ошибка в файле {f.name}: {e}")
+            st.error(f"❌ Не удалось прочитать файл {f.name}. Попробуйте открыть его в Excel, нажать 'Сохранить как' и выбрать формат 'Книга Excel (.xlsx)'. Ошибка: {e}")
 
     if dfs and price_df is not None:
         try:
             df_ozon = pd.concat(dfs, ignore_index=True)
-            st.success("Данные успешно склеены!")
+            st.success("Данные успешно склеены и готовы к анализу!")
             st.write(df_ozon.head())
         except Exception as e:
-            st.error(f"Ошибка при объединении: {e}")
+            st.error(f"Ошибка при объединении таблиц: {e}")
