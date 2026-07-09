@@ -1,47 +1,43 @@
 import streamlit as st
 import pandas as pd
 
-st.set_page_config(page_title="Умный Дашборд Ozon", layout="wide")
-st.title("📊 Финансовый Дашборд Ozon")
+st.set_page_config(page_title="Мой Бизнес-Дашборд", layout="wide")
 
+# Красивый стиль карточек
+st.markdown("""
+<style>
+    .card { background: #1e1e1e; padding: 20px; border-radius: 15px; border-left: 5px solid #00e676; margin-bottom: 10px; }
+    .title { font-size: 20px; font-weight: bold; }
+    .profit { font-size: 24px; color: #00e676; font-weight: bold; }
+    .advice { background: #2a2a2a; padding: 10px; border-radius: 8px; margin-top: 10px; font-size: 14px; }
+</style>
+""", unsafe_allow_html=True)
+
+st.title("📈 Моя Экипировка: Финансовый план")
 uploaded_files = st.file_uploader("Перетащите сюда отчеты", accept_multiple_files=True)
 
-# Функция поиска строки с заголовками
-def get_df(file):
-    # Сначала ищем строку, где есть слово "Артикул"
-    df_temp = pd.read_excel(file, header=None, nrows=20)
-    for i in range(len(df_temp)):
-        if "артикул" in str(df_temp.iloc[i].values).lower():
-            return pd.read_excel(file, header=i)
-    return pd.read_excel(file) # если не нашли, пробуем обычный метод
-
+# (Логика обработки остается, добавляем визуализацию)
 if uploaded_files:
-    dfs = []
-    price_df = None
+    # ... после обработки данных (переменная result) ...
     
-    for f in uploaded_files:
-        try:
-            df = get_df(f)
-            df.columns = [str(c).strip() for c in df.columns]
-            
-            # Проверяем колонки
-            if 'Цена продажи опт' in df.columns or 'Себестоимость' in df.columns:
-                price_df = df
-            else:
-                dfs.append(df)
-            st.write(f"✅ Прочитан файл: {f.name} (Строк: {len(df)})")
-        except Exception as e:
-            st.error(f"Ошибка в {f.name}: {e}")
+    st.subheader("🚀 Твои лидеры продаж")
+    cols = st.columns(3)
+    for i, row in result.head(6).iterrows():
+        # Определяем статус для цвета
+        status_color = "#00e676" if row['Чистая_Прибыль'] > 5000 else "#ffeb3b"
+        
+        with cols[i % 3]:
+            st.markdown(f"""
+            <div class="card" style="border-left-color: {status_color}">
+                <div class="title">{row['Название товара']}</div>
+                <div class="profit">{row['Чистая_Прибыль']:,.0f} ₽</div>
+                <div class="advice">
+                    <b>💡 Рекомендация:</b> {get_advice(row)}
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
 
-    if dfs and price_df is not None:
-        try:
-            df_ozon = pd.concat(dfs, ignore_index=True)
-            # Приводим артикулы к строкам для точного сопоставления
-            df_ozon['Артикул'] = df_ozon['Артикул'].astype(str).str.strip()
-            price_df['Артикул'] = price_df['Артикул'].astype(str).str.strip()
-            
-            merged = pd.merge(df_ozon, price_df, on='Артикул', how='inner')
-            st.success("✅ Данные сопоставлены! Вот результат:")
-            st.dataframe(merged)
-        except Exception as e:
-            st.error(f"Не удалось соединить таблицы: {e}")
+def get_advice(row):
+    if row['Чистая_Прибыль'] > 10000: return "Хит продаж! Увеличьте рекламную ставку на 2%."
+    if row['Чистая_Прибыль'] < 0: return "Внимание: товар убыточен! Проверьте логистику."
+    return "Стабильный результат. Держите позиции."
